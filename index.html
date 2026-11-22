@@ -6,112 +6,6 @@
   <title>ウーパールーパーVR水槽</title>
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
 
-  <!-- ★ステップ2で、このscriptの中身も習った範囲のタグだけに置き換える予定 -->
-  <script>
-  // a-entity を作って親に追加する小さな関数
-  function mk(tag, attrs, parent) {
-    const e = document.createElement(tag);
-    for (const k in attrs) e.setAttribute(k, attrs[k]);
-    parent.appendChild(e);
-    return e;
-  }
-
-  // ウーパールーパー本体（色だけ変えて3種類を作る）
-  AFRAME.registerComponent('axolotl', {
-    schema: {
-      body:  { default: '#FF9EBA' },
-      head:  { default: '#FFB3C7' },
-      limb:  { default: '#FFA6C0' },
-      eye:   { default: '#0D0A12' },
-      gill:  { default: '#FF5987' },
-      mouth: { default: '#BF4066' }
-    },
-    init: function () {
-      const d = this.data;
-      const root = mk('a-entity', { position: '1.05 0 0' }, this.el);
-
-      const body = mk('a-entity', { position: '-0.2 0.65 0', scale: '1.35 0.35 0.65' }, root);
-      mk('a-sphere', { radius: 1, color: d.body }, body);
-
-      const head = mk('a-entity', { position: '1.0 0.95 0', scale: '0.8 0.55 0.7' }, root);
-      mk('a-sphere', { radius: 1, color: d.head }, head);
-
-      mk('a-sphere', { position: '1.35 1.15 0.5',  radius: 0.1, color: d.eye }, root);
-      mk('a-sphere', { position: '1.35 1.15 -0.5', radius: 0.1, color: d.eye }, root);
-
-      mk('a-box', { position: '1.75 0.9 0', width: 0.085, height: 0.025, depth: 0.4, color: d.mouth }, root);
-
-      const gills = [
-        ['0.95 1.30 0.8',   '63 0 0'],
-        ['0.95 0.95 0.85',  '90 0 0'],
-        ['0.95 0.65 0.78',  '109 0 0'],
-        ['0.95 1.30 -0.8',  '-63 0 0'],
-        ['0.95 0.95 -0.85', '-90 0 0'],
-        ['0.95 0.65 -0.78', '-109 0 0']
-      ];
-      gills.forEach(function (g) {
-        mk('a-cone', { position: g[0], rotation: g[1], 'radius-bottom': 0.13, height: 0.55, color: d.gill }, root);
-      });
-
-      const legs = [
-        ['0.65 0.3 0.55',   '-34 0 0'],
-        ['0.65 0.3 -0.55',  '34 0 0'],
-        ['-0.85 0.3 0.55',  '-34 0 0'],
-        ['-0.85 0.3 -0.55', '34 0 0']
-      ];
-      legs.forEach(function (l) {
-        mk('a-cylinder', { position: l[0], rotation: l[1], radius: 0.12, height: 0.5, color: d.limb }, root);
-      });
-
-      const tail = mk('a-entity', { class: 'tail', position: '-1.2 0.8 0' }, root);
-      const tailBody = mk('a-entity', { position: '-0.2 0 0', scale: '2.5 0.3 0.2' }, tail);
-      mk('a-sphere', { radius: 1, color: d.body }, tailBody);
-    }
-  });
-
-  // 左右に泳ぐ動き
-  AFRAME.registerComponent('swim', {
-    schema: {
-      cx:    { default: 0 },
-      amp:   { default: 3 },
-      speed: { default: 0.5 },
-      z:     { default: -4 },
-      zAmp:  { default: 0.3 },
-      y:     { default: 0.5 },
-      phase: { default: 0 },
-      tailSwing: { default: 0.12 }
-    },
-    init: function () {
-      this.yaw = Math.cos(this.data.phase) >= 0 ? 0 : Math.PI;
-      this.tail = null;
-    },
-    tick: function (time, dt) {
-      const d = this.data;
-      const t = time / 1000;
-      const a = d.speed * t + d.phase;
-
-      const x = d.cx + d.amp * Math.sin(a);
-      const v = Math.cos(a);
-      const z = d.z + d.zAmp * Math.sin(a * 0.7 + 1);
-      const y = d.y + 0.08 * Math.sin(t * 1.3 + d.phase);
-      this.el.object3D.position.set(x, y, z);
-
-      const target = v >= 0 ? 0 : Math.PI;
-      let diff = target - this.yaw;
-      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      this.yaw += diff * Math.min(1, dt * 0.006);
-      this.el.object3D.rotation.y = this.yaw + 0.08 * Math.sin(t * 4 + d.phase);
-
-      if (!this.tail) {
-        const el = this.el.querySelector('.tail');
-        if (el) this.tail = el.object3D;
-      }
-      if (this.tail) {
-        this.tail.rotation.y = d.tailSwing * Math.sin(t * 5 + d.phase) * (0.5 + 0.5 * Math.abs(v));
-      }
-    }
-  });
-  </script>
 </head>
 
 <body>
@@ -124,23 +18,171 @@
     <!-- 砂の床（ただの色つきの平面） -->
     <a-plane rotation="-90 0 0" width="60" height="60" color="#E3D3A0"></a-plane>
 
-    <!-- ===== ウーパールーパー 3匹 ===== -->
-    <!-- ① リューシスティック：体 白 / 目 黒 / 鰓 ピンク -->
-    <a-entity swim="cx: 0; amp: 2.6; speed: 0.5; z: -3.3; y: 0.45; phase: 0">
-      <a-entity scale="0.25 0.25 0.25"
-        axolotl="body: #FFFFFF; head: #FFFFFF; limb: #FFFFFF; eye: #000000; gill: #FF8FB1; mouth: #E58AA0"></a-entity>
+    <!-- ===== ウーパールーパー 3匹：自分のまわりをぐるぐる泳ぐ ===== -->
+
+    <!-- ===== ① リューシスティック：体 白 / 目 黒 / 鰓 ピンク ===== -->
+    <!-- 親：原点（自分の位置）を中心にぐるっと回す -->
+    <a-entity animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 30000; easing: linear; loop: true">
+      <!-- 子：自分から距離2.8の位置に置く。rotationは頭の向き。animationで上下にゆらゆら -->
+      <a-entity position="0 0.5 -2.8" rotation="0 180 0"
+        animation="property: position; from: 0 0.40 -2.8; to: 0 0.60 -2.8; dur: 2000; dir: alternate; easing: easeInOutSine; loop: true">
+        <a-entity scale="0.25 0.25 0.25">
+          <a-entity position="1.05 0 0">
+
+            <!-- 胴体 -->
+            <a-entity position="-0.2 0.65 0" scale="1.35 0.35 0.65">
+              <a-sphere radius="1" color="#FFFFFF"></a-sphere>
+            </a-entity>
+
+            <!-- 頭 -->
+            <a-entity position="1.0 0.95 0" scale="0.8 0.55 0.7">
+              <a-sphere radius="1" color="#FFFFFF"></a-sphere>
+            </a-entity>
+
+            <!-- 目 -->
+            <a-sphere position="1.35 1.15 0.5" radius="0.1" color="#000000"></a-sphere>
+            <a-sphere position="1.35 1.15 -0.5" radius="0.1" color="#000000"></a-sphere>
+
+            <!-- 口 -->
+            <a-box position="1.75 0.9 0" width="0.085" height="0.025" depth="0.4" color="#E58AA0"></a-box>
+
+            <!-- 外鰓（手前側） -->
+            <a-cone position="0.95 1.30 0.8" rotation="63 0 0" radius-bottom="0.13" height="0.55" color="#FF8FB1"></a-cone>
+            <a-cone position="0.95 0.95 0.85" rotation="90 0 0" radius-bottom="0.13" height="0.55" color="#FF8FB1"></a-cone>
+            <a-cone position="0.95 0.65 0.78" rotation="109 0 0" radius-bottom="0.13" height="0.55" color="#FF8FB1"></a-cone>
+
+            <!-- 外鰓（反対側） -->
+            <a-cone position="0.95 1.30 -0.8" rotation="-63 0 0" radius-bottom="0.13" height="0.55" color="#FF8FB1"></a-cone>
+            <a-cone position="0.95 0.95 -0.85" rotation="-90 0 0" radius-bottom="0.13" height="0.55" color="#FF8FB1"></a-cone>
+            <a-cone position="0.95 0.65 -0.78" rotation="-109 0 0" radius-bottom="0.13" height="0.55" color="#FF8FB1"></a-cone>
+
+            <!-- 足 -->
+            <a-cylinder position="0.65 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#FFFFFF"></a-cylinder>
+            <a-cylinder position="0.65 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#FFFFFF"></a-cylinder>
+            <a-cylinder position="-0.85 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#FFFFFF"></a-cylinder>
+            <a-cylinder position="-0.85 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#FFFFFF"></a-cylinder>
+
+            <!-- しっぽ：付け根(親)を左右に小さく回転させて、ふりふりさせる -->
+            <a-entity position="-1.2 0.8 0"
+              animation="property: rotation; from: 0 -7 0; to: 0 7 0; dur: 700; dir: alternate; easing: easeInOutSine; loop: true">
+              <a-entity position="-0.2 0 0" scale="2.5 0.3 0.2">
+                <a-sphere radius="1" color="#FFFFFF"></a-sphere>
+              </a-entity>
+            </a-entity>
+
+          </a-entity>
+        </a-entity>
+      </a-entity>
     </a-entity>
 
-    <!-- ② ゴールデン：体 黄色 / 目 白 / 鰓 オレンジがかったピンク -->
-    <a-entity swim="cx: 0; amp: 3.0; speed: 0.38; z: -4.4; y: 0.7; phase: 2">
-      <a-entity scale="0.25 0.25 0.25"
-        axolotl="body: #FFD54A; head: #FFE066; limb: #FFCF40; eye: #FFFFFF; gill: #FF9F7A; mouth: #E0A030"></a-entity>
+    <!-- ===== ② ゴールデン：体 黄色 / 目 白 / 鰓 オレンジがかったピンク ===== -->
+    <!-- 親：原点（自分の位置）を中心にぐるっと回す -->
+    <a-entity animation="property: rotation; from: 0 120 0; to: 0 -240 0; dur: 40000; easing: linear; loop: true">
+      <!-- 子：自分から距離3.7の位置に置く。rotationは頭の向き。animationで上下にゆらゆら -->
+      <a-entity position="0 0.8 -3.7" rotation="0 0 0"
+        animation="property: position; from: 0 0.70 -3.7; to: 0 0.90 -3.7; dur: 2400; dir: alternate; easing: easeInOutSine; loop: true">
+        <a-entity scale="0.25 0.25 0.25">
+          <a-entity position="1.05 0 0">
+
+            <!-- 胴体 -->
+            <a-entity position="-0.2 0.65 0" scale="1.35 0.35 0.65">
+              <a-sphere radius="1" color="#FFD54A"></a-sphere>
+            </a-entity>
+
+            <!-- 頭 -->
+            <a-entity position="1.0 0.95 0" scale="0.8 0.55 0.7">
+              <a-sphere radius="1" color="#FFE066"></a-sphere>
+            </a-entity>
+
+            <!-- 目 -->
+            <a-sphere position="1.35 1.15 0.5" radius="0.1" color="#FFFFFF"></a-sphere>
+            <a-sphere position="1.35 1.15 -0.5" radius="0.1" color="#FFFFFF"></a-sphere>
+
+            <!-- 口 -->
+            <a-box position="1.75 0.9 0" width="0.085" height="0.025" depth="0.4" color="#E0A030"></a-box>
+
+            <!-- 外鰓（手前側） -->
+            <a-cone position="0.95 1.30 0.8" rotation="63 0 0" radius-bottom="0.13" height="0.55" color="#FF9F7A"></a-cone>
+            <a-cone position="0.95 0.95 0.85" rotation="90 0 0" radius-bottom="0.13" height="0.55" color="#FF9F7A"></a-cone>
+            <a-cone position="0.95 0.65 0.78" rotation="109 0 0" radius-bottom="0.13" height="0.55" color="#FF9F7A"></a-cone>
+
+            <!-- 外鰓（反対側） -->
+            <a-cone position="0.95 1.30 -0.8" rotation="-63 0 0" radius-bottom="0.13" height="0.55" color="#FF9F7A"></a-cone>
+            <a-cone position="0.95 0.95 -0.85" rotation="-90 0 0" radius-bottom="0.13" height="0.55" color="#FF9F7A"></a-cone>
+            <a-cone position="0.95 0.65 -0.78" rotation="-109 0 0" radius-bottom="0.13" height="0.55" color="#FF9F7A"></a-cone>
+
+            <!-- 足 -->
+            <a-cylinder position="0.65 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#FFCF40"></a-cylinder>
+            <a-cylinder position="0.65 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#FFCF40"></a-cylinder>
+            <a-cylinder position="-0.85 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#FFCF40"></a-cylinder>
+            <a-cylinder position="-0.85 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#FFCF40"></a-cylinder>
+
+            <!-- しっぽ：付け根(親)を左右に小さく回転させて、ふりふりさせる -->
+            <a-entity position="-1.2 0.8 0"
+              animation="property: rotation; from: 0 -7 0; to: 0 7 0; dur: 800; dir: alternate; easing: easeInOutSine; loop: true">
+              <a-entity position="-0.2 0 0" scale="2.5 0.3 0.2">
+                <a-sphere radius="1" color="#FFD54A"></a-sphere>
+              </a-entity>
+            </a-entity>
+
+          </a-entity>
+        </a-entity>
+      </a-entity>
     </a-entity>
 
-    <!-- ③ ブラック：体 グレー / 目 青みがかった黒 / 鰓 グレー -->
-    <a-entity swim="cx: 0; amp: 3.4; speed: 0.45; z: -5.5; y: 0.35; phase: 4">
-      <a-entity scale="0.25 0.25 0.25"
-        axolotl="body: #4A4A50; head: #55555B; limb: #4A4A50; eye: #101A3A; gill: #3A3A40; mouth: #2A2A2E"></a-entity>
+    <!-- ===== ③ ブラック：体 グレー / 目 青みがかった黒 / 鰓 グレー ===== -->
+    <!-- 親：原点（自分の位置）を中心にぐるっと回す -->
+    <a-entity animation="property: rotation; from: 0 240 0; to: 0 600 0; dur: 50000; easing: linear; loop: true">
+      <!-- 子：自分から距離4.5の位置に置く。rotationは頭の向き。animationで上下にゆらゆら -->
+      <a-entity position="0 0.4 -4.5" rotation="0 180 0"
+        animation="property: position; from: 0 0.30 -4.5; to: 0 0.50 -4.5; dur: 2800; dir: alternate; easing: easeInOutSine; loop: true">
+        <a-entity scale="0.25 0.25 0.25">
+          <a-entity position="1.05 0 0">
+
+            <!-- 胴体 -->
+            <a-entity position="-0.2 0.65 0" scale="1.35 0.35 0.65">
+              <a-sphere radius="1" color="#4A4A50"></a-sphere>
+            </a-entity>
+
+            <!-- 頭 -->
+            <a-entity position="1.0 0.95 0" scale="0.8 0.55 0.7">
+              <a-sphere radius="1" color="#55555B"></a-sphere>
+            </a-entity>
+
+            <!-- 目 -->
+            <a-sphere position="1.35 1.15 0.5" radius="0.1" color="#101A3A"></a-sphere>
+            <a-sphere position="1.35 1.15 -0.5" radius="0.1" color="#101A3A"></a-sphere>
+
+            <!-- 口 -->
+            <a-box position="1.75 0.9 0" width="0.085" height="0.025" depth="0.4" color="#2A2A2E"></a-box>
+
+            <!-- 外鰓（手前側） -->
+            <a-cone position="0.95 1.30 0.8" rotation="63 0 0" radius-bottom="0.13" height="0.55" color="#3A3A40"></a-cone>
+            <a-cone position="0.95 0.95 0.85" rotation="90 0 0" radius-bottom="0.13" height="0.55" color="#3A3A40"></a-cone>
+            <a-cone position="0.95 0.65 0.78" rotation="109 0 0" radius-bottom="0.13" height="0.55" color="#3A3A40"></a-cone>
+
+            <!-- 外鰓（反対側） -->
+            <a-cone position="0.95 1.30 -0.8" rotation="-63 0 0" radius-bottom="0.13" height="0.55" color="#3A3A40"></a-cone>
+            <a-cone position="0.95 0.95 -0.85" rotation="-90 0 0" radius-bottom="0.13" height="0.55" color="#3A3A40"></a-cone>
+            <a-cone position="0.95 0.65 -0.78" rotation="-109 0 0" radius-bottom="0.13" height="0.55" color="#3A3A40"></a-cone>
+
+            <!-- 足 -->
+            <a-cylinder position="0.65 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#4A4A50"></a-cylinder>
+            <a-cylinder position="0.65 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#4A4A50"></a-cylinder>
+            <a-cylinder position="-0.85 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#4A4A50"></a-cylinder>
+            <a-cylinder position="-0.85 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#4A4A50"></a-cylinder>
+
+            <!-- しっぽ：付け根(親)を左右に小さく回転させて、ふりふりさせる -->
+            <a-entity position="-1.2 0.8 0"
+              animation="property: rotation; from: 0 -7 0; to: 0 7 0; dur: 900; dir: alternate; easing: easeInOutSine; loop: true">
+              <a-entity position="-0.2 0 0" scale="2.5 0.3 0.2">
+                <a-sphere radius="1" color="#4A4A50"></a-sphere>
+              </a-entity>
+            </a-entity>
+
+          </a-entity>
+        </a-entity>
+      </a-entity>
     </a-entity>
 
     <!-- ===== 岩：a-dodecahedron（12面体）をつぶして、灰色にしただけ ===== -->
@@ -149,8 +191,8 @@
     <a-dodecahedron position="0 0.5 -10"   radius="1" scale="2.2 1.2 1.6" rotation="0 80 0"  color="#6E6E6A"></a-dodecahedron>
     <a-dodecahedron position="-6 0.3 -3"   radius="1" scale="1.0 0.6 0.9" rotation="0 45 0"  color="#8A8A85"></a-dodecahedron>
     <a-dodecahedron position="6 0.3 -4"    radius="1" scale="1.2 0.7 1.0" rotation="0 120 0" color="#777772"></a-dodecahedron>
-    <a-dodecahedron position="-3 0.3 3.5"  radius="1" scale="1.2 0.7 1.0" rotation="0 200 0" color="#8A8A85"></a-dodecahedron>
-    <a-dodecahedron position="4 0.4 4"     radius="1" scale="1.5 0.9 1.2" rotation="0 300 0" color="#6E6E6A"></a-dodecahedron>
+    <a-dodecahedron position="-4.5 0.3 5"  radius="1" scale="1.2 0.7 1.0" rotation="0 200 0" color="#8A8A85"></a-dodecahedron>
+    <a-dodecahedron position="5 0.4 5"     radius="1" scale="1.5 0.9 1.2" rotation="0 300 0" color="#6E6E6A"></a-dodecahedron>
 
     <!-- ===== 海藻：細い円柱を3本まとめて、親をゆらゆら回転 =====
          親(a-entity)の位置＝根元。円柱は「高さの半分」だけ上に置くと根元が親の位置にそろう。
