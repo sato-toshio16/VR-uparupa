@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ウーパールーパーVR水槽</title>
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+</head>
+<body>
+  <a-scene background="color: #7FD1E8">
+
+    <!-- 光 -->
+    <a-entity light="type: ambient; color: #FFFFFF; intensity: 0.8"></a-entity>
+    <a-entity light="type: directional; color: #FFFFFF; intensity: 0.6" position="2 6 2"></a-entity>
+
+    <!-- 水底 -->
+    <a-plane position="0 0 -4" rotation="-90 0 0" width="30" height="30" color="#E8D9A8"></a-plane>
+
+    <!-- 水中の空 -->
+    <a-sky color="#7FD1E8"></a-sky>
+
+    <!-- 岩 -->
+    <a-sphere position="-3 0.4 -6" radius="0.9" color="#8A8A8A"></a-sphere>
+    <a-sphere position="3.5 0.3 -7" radius="0.7" color="#777777"></a-sphere>
+
+    <!-- 水草 -->
+    <a-cylinder position="2 1 -5" radius="0.08" height="2" color="#3FA34D"></a-cylinder>
+    <a-cylinder position="2.3 0.75 -5.2" radius="0.08" height="1.5" color="#2E8B3E"></a-cylinder>
+    <a-cylinder position="-2 0.9 -4.5" radius="0.08" height="1.8" color="#3FA34D"></a-cylinder>
+
+    <!-- ウーパールーパーが円を描いて歩く(外側が回転、中身は前回のコード) -->
+    <a-entity position="0 0 -4"
+      animation="property: rotation; to: 0 360 0; dur: 30000; easing: linear; loop: true">
+
+      <!-- 回転の中心から離して配置 -->
+      <a-entity position="2.5 0 0">
+
+        <!-- ここから前回のウーパールーパー -->
+        <a-entity scale="0.5 0.5 0.5" rotation="0 0 0">
+          <a-entity position="1.05 0 0">
+
+            <!-- 胴体 -->
+            <a-entity position="-0.2 0.65 0" scale="1.35 0.35 0.65">
+              <a-sphere radius="1" color="#FF9EBA"></a-sphere>
+            </a-entity>
+
+            <!-- 頭 -->
+            <a-entity position="1.0 0.95 0" scale="0.8 0.55 0.7">
+              <a-sphere radius="1" color="#FFB3C7"></a-sphere>
+            </a-entity>
+
+            <!-- 目 -->
+            <a-sphere position="1.35 1.15 0.5" radius="0.1" color="#0D0A12"></a-sphere>
+            <a-sphere position="1.35 1.15 -0.5" radius="0.1" color="#0D0A12"></a-sphere>
+
+            <!-- 口 -->
+            <a-box position="1.75 0.9 0" width="0.085" height="0.025" depth="0.4" color="#BF4066"></a-box>
+
+            <!-- 外鰓(手前側) -->
+            <a-cone position="0.95 1.30 0.8" rotation="63 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
+            <a-cone position="0.95 0.95 0.85" rotation="90 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
+            <a-cone position="0.95 0.65 0.78" rotation="109 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
+
+            <!-- 外鰓(反対側) -->
+            <a-cone position="0.95 1.30 -0.8" rotation="-63 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
+            <a-cone position="0.95 0.95 -0.85" rotation="-90 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
+            <a-cone position="0.95 0.65 -0.78" rotation="-109 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
+
+            <!-- 足 -->
+            <a-cylinder position="0.65 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#FFA6C0"></a-cylinder>
+            <a-cylinder position="0.65 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#FFA6C0"></a-cylinder>
+            <a-cylinder position="-0.85 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#FFA6C0"></a-cylinder>
+            <a-cylinder position="-0.85 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#FFA6C0"></a-cylinder>
+
+            <!-- しっぽ -->
+            <a-entity position="-1.4 0.8 0" scale="2.5 0.3 0.2">
+              <a-sphere radius="1" color="#FF9EBA"></a-sphere>
+            </a-entity>
+
+          </a-entity>
+        </a-entity>
+        <!-- ここまで -->
+
+      </a-entity>
+    </a-entity>
+
+    <!-- 視点(目の高さ) -->
+    <a-entity camera position="0 1.6 0" look-controls></a-entity>
+  </a-scene>
+</body>
+</html>
