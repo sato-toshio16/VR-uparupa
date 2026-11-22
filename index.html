@@ -4,26 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ウーパールーパーVR水槽</title>
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-
+  <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
 </head>
 
 <body>
-  <a-scene xr-mode-ui="cardboardModeEnabled: true" background="color: #2A86A3" fog="type: linear; color: #2A86A3; near: 2; far: 14">
+  <a-scene background="color: #2A86A3" fog="type: linear; color: #2A86A3; near: 2; far: 14">
 
     <!-- 光 -->
     <a-entity light="type: ambient; color: #BFE8F5; intensity: 0.7"></a-entity>
     <a-entity light="type: directional; color: #FFFFFF; intensity: 0.9" position="2 8 3"></a-entity>
 
-    <!-- 砂の床（ただの色つきの平面） -->
+    <!-- 砂の床 -->
     <a-plane rotation="-90 0 0" width="60" height="60" color="#E3D3A0"></a-plane>
 
-    <!-- ===== ウーパールーパー 3匹：自分のまわりをぐるぐる泳ぐ ===== -->
+    <!-- ===== ウーパールーパー ===== -->
 
     <!-- ===== ① リューシスティック：体 白 / 目 黒 / 鰓 ピンク ===== -->
     <!-- 親：原点（自分の位置）を中心にぐるっと回す -->
     <a-entity animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 30000; easing: linear; loop: true">
-      <!-- 子：自分から距離2.8の位置に置く。rotationは頭の向き。animationで上下にゆらゆら -->
+      <!-- 子：自分から距離2.8の位置に置く -->
       <a-entity position="0 0.5 -1.8" rotation="0 180 0"
         animation="property: position; from: 0 0.40 -1.8; to: 0 0.60 -1.8; dur: 2000; dir: alternate; easing: easeInOutSine; loop: true">
         <a-entity scale="0.25 0.25 0.25">
@@ -62,7 +61,7 @@
             <a-cylinder position="-0.85 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#FFFFFF"></a-cylinder>
             <a-cylinder position="-0.85 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#FFFFFF"></a-cylinder>
 
-            <!-- しっぽ：付け根(親)を左右に小さく回転させて、ふりふりさせる -->
+            <!-- しっぽ -->
             <a-entity position="-1.2 0.8 0"
               animation="property: rotation; from: 0 -7 0; to: 0 7 0; dur: 700; dir: alternate; easing: easeInOutSine; loop: true">
               <a-entity position="-0.2 0 0" scale="2.5 0.3 0.2">
@@ -78,7 +77,7 @@
     <!-- ===== ② ゴールデン：体 黄色 / 目 白 / 鰓 オレンジがかったピンク ===== -->
     <!-- 親：原点（自分の位置）を中心にぐるっと回す -->
     <a-entity animation="property: rotation; from: 0 120 0; to: 0 -240 0; dur: 40000; easing: linear; loop: true">
-      <!-- 子：自分から距離3.7の位置に置く。rotationは頭の向き。animationで上下にゆらゆら -->
+      <!-- 子：自分から距離3.7の位置に置く -->
       <a-entity position="0 0.8 -2.4" rotation="0 0 0"
         animation="property: position; from: 0 0.70 -2.4; to: 0 0.90 -2.4; dur: 2400; dir: alternate; easing: easeInOutSine; loop: true">
         <a-entity scale="0.25 0.25 0.25">
@@ -117,7 +116,7 @@
             <a-cylinder position="-0.85 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#FFCF40"></a-cylinder>
             <a-cylinder position="-0.85 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#FFCF40"></a-cylinder>
 
-            <!-- しっぽ：付け根(親)を左右に小さく回転させて、ふりふりさせる -->
+            <!-- しっぽ -->
             <a-entity position="-1.2 0.8 0"
               animation="property: rotation; from: 0 -7 0; to: 0 7 0; dur: 800; dir: alternate; easing: easeInOutSine; loop: true">
               <a-entity position="-0.2 0 0" scale="2.5 0.3 0.2">
@@ -133,7 +132,7 @@
     <!-- ===== ③ ブラック：体 グレー / 目 青みがかった黒 / 鰓 グレー ===== -->
     <!-- 親：原点（自分の位置）を中心にぐるっと回す -->
     <a-entity animation="property: rotation; from: 0 240 0; to: 0 600 0; dur: 50000; easing: linear; loop: true">
-      <!-- 子：自分から距離4.5の位置に置く。rotationは頭の向き。animationで上下にゆらゆら -->
+      <!-- 子：自分から距離4.5の位置に置く -->
       <a-entity position="0 0.4 -3.0" rotation="0 180 0"
         animation="property: position; from: 0 0.30 -3.0; to: 0 0.50 -3.0; dur: 2800; dir: alternate; easing: easeInOutSine; loop: true">
         <a-entity scale="0.25 0.25 0.25">
@@ -172,7 +171,7 @@
             <a-cylinder position="-0.85 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#4A4A50"></a-cylinder>
             <a-cylinder position="-0.85 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#4A4A50"></a-cylinder>
 
-            <!-- しっぽ：付け根(親)を左右に小さく回転させて、ふりふりさせる -->
+            <!-- しっぽ -->
             <a-entity position="-1.2 0.8 0"
               animation="property: rotation; from: 0 -7 0; to: 0 7 0; dur: 900; dir: alternate; easing: easeInOutSine; loop: true">
               <a-entity position="-0.2 0 0" scale="2.5 0.3 0.2">
@@ -185,8 +184,7 @@
       </a-entity>
     </a-entity>
 
-    <!-- ===== 岩：a-dodecahedron（12面体）をつぶして、灰色にしただけ =====
-         自分(原点)のまわりを一周するように、円状に並べている -->
+    <!-- ===== 岩 ===== -->
     <a-dodecahedron position="-1.0 0.40 -6.0" radius="1" scale="1.4 0.9 1.3" rotation="0 114 0" color="#80807B"></a-dodecahedron>
     <a-dodecahedron position="4.8 0.40 -5.2" radius="1" scale="1.4 0.9 1.4" rotation="0 300 0" color="#80807B"></a-dodecahedron>
     <a-dodecahedron position="6.4 0.34 -1.2" radius="1" scale="1.5 0.8 1.5" rotation="0 182 0" color="#80807B"></a-dodecahedron>
@@ -198,9 +196,7 @@
     <a-dodecahedron position="-6.6 0.40 -2.1" radius="1" scale="1.3 0.9 1.2" rotation="0 233 0" color="#80807B"></a-dodecahedron>
     <a-dodecahedron position="-3.7 0.22 -4.7" radius="1" scale="1.1 0.5 1.1" rotation="0 305 0" color="#80807B"></a-dodecahedron>
 
-    <!-- ===== 海藻：細い円柱を3本まとめて、親をゆらゆら回転 =====
-         親(a-entity)の位置＝根元。円柱は「高さの半分」だけ上に置くと根元が親の位置にそろう。
-         親をrotationアニメーションさせると、根元を支点に先端が揺れる -->
+    <!-- ===== 海藻 ===== -->
     <a-entity position="3.5 0 2.9"
       animation="property: rotation; from: 0 0 -7; to: 0 0 7; dur: 2600; dir: alternate; easing: easeInOutSine; loop: true">
       <a-cylinder position="-0.15 0.8 0.00" radius="0.07" height="1.7" color="#5BBF62"></a-cylinder>
