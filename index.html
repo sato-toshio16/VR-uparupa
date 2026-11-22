@@ -5,87 +5,397 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ウーパールーパーVR水槽</title>
   <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+
+  <script>
+  /* =========================================================
+     共通の小道具
+     ========================================================= */
+  const THREE = AFRAME.THREE;
+
+  // 再現性のある乱数（配置のたびに形が変わらないように）
+  function rng(seed) {
+    let s = seed * 9301 + 49297;
+    return function () {
+      s = (s * 9301 + 49297) % 233280;
+      return s / 233280;
+    };
+  }
+
+  function setSRGB(tex) {
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+  }
+
+  // a-entity を作って親に追加するヘルパー
+  function mk(tag, attrs, parent) {
+    const e = document.createElement(tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    parent.appendChild(e);
+    return e;
+  }
+
+  /* =========================================================
+     1) ウーパールーパー本体（色だけ変えて3種類を作る）
+        原点 = 体の中心 / 頭は +x 方向
+     ========================================================= */
+  AFRAME.registerComponent('axolotl', {
+    schema: {
+      body:  { default: '#FF9EBA' },
+      head:  { default: '#FFB3C7' },
+      limb:  { default: '#FFA6C0' },
+      eye:   { default: '#0D0A12' },
+      gill:  { default: '#FF5987' },
+      mouth: { default: '#BF4066' }
+    },
+    init: function () {
+      const d = this.data;
+      const root = mk('a-entity', { position: '1.05 0 0' }, this.el);
+
+      // 胴体
+      const body = mk('a-entity', { position: '-0.2 0.65 0', scale: '1.35 0.35 0.65' }, root);
+      mk('a-sphere', { radius: 1, color: d.body }, body);
+
+      // 頭
+      const head = mk('a-entity', { position: '1.0 0.95 0', scale: '0.8 0.55 0.7' }, root);
+      mk('a-sphere', { radius: 1, color: d.head }, head);
+
+      // 目
+      mk('a-sphere', { position: '1.35 1.15 0.5',  radius: 0.1, color: d.eye }, root);
+      mk('a-sphere', { position: '1.35 1.15 -0.5', radius: 0.1, color: d.eye }, root);
+
+      // 口
+      mk('a-box', { position: '1.75 0.9 0', width: 0.085, height: 0.025, depth: 0.4, color: d.mouth }, root);
+
+      // 外鰓（左右3本ずつ）
+      const gills = [
+        ['0.95 1.30 0.8',   '63 0 0'],
+        ['0.95 0.95 0.85',  '90 0 0'],
+        ['0.95 0.65 0.78',  '109 0 0'],
+        ['0.95 1.30 -0.8',  '-63 0 0'],
+        ['0.95 0.95 -0.85', '-90 0 0'],
+        ['0.95 0.65 -0.78', '-109 0 0']
+      ];
+      gills.forEach(function (g) {
+        mk('a-cone', { position: g[0], rotation: g[1], 'radius-bottom': 0.13, height: 0.55, color: d.gill }, root);
+      });
+
+      // 足
+      const legs = [
+        ['0.65 0.3 0.55',   '-34 0 0'],
+        ['0.65 0.3 -0.55',  '34 0 0'],
+        ['-0.85 0.3 0.55',  '-34 0 0'],
+        ['-0.85 0.3 -0.55', '34 0 0']
+      ];
+      legs.forEach(function (l) {
+        mk('a-cylinder', { position: l[0], rotation: l[1], radius: 0.12, height: 0.5, color: d.limb }, root);
+      });
+
+      // しっぽ（付け根を回転の支点にして、左右にくねらせる）
+      const tail = mk('a-entity', { class: 'tail', position: '-1.2 0.8 0' }, root);
+      const tailBody = mk('a-entity', { position: '-0.2 0 0', scale: '2.5 0.3 0.2' }, tail);
+      mk('a-sphere', { radius: 1, color: d.body }, tailBody);
+    }
+  });
+
+  /* =========================================================
+     2) 左右に泳ぐ動き（往復＋向き転換＋しっぽ振り）
+     ========================================================= */
+  AFRAME.registerComponent('swim', {
+    schema: {
+      cx:    { default: 0 },     // 往復の中心 x
+      amp:   { default: 3 },     // 往復の振れ幅
+      speed: { default: 0.5 },   // 速さ（rad/秒）
+      z:     { default: -4 },    // 奥行き
+      zAmp:  { default: 0.3 },   // 奥行き方向のゆらぎ
+      y:     { default: 0.5 },   // 高さ
+      phase: { default: 0 }      // 開始位置のずれ
+    },
+    init: function () {
+      this.yaw = Math.cos(this.data.phase) >= 0 ? 0 : Math.PI;
+      this.tail = null;
+    },
+    tick: function (time, dt) {
+      const d = this.data;
+      const t = time / 1000;
+      const a = d.speed * t + d.phase;
+
+      const x = d.cx + d.amp * Math.sin(a);
+      const v = Math.cos(a); // x方向の速度の符号
+      const z = d.z + d.zAmp * Math.sin(a * 0.7 + 1);
+      const y = d.y + 0.08 * Math.sin(t * 1.3 + d.phase);
+      this.el.object3D.position.set(x, y, z);
+
+      // 進行方向に頭を向ける（折り返しでは滑らかに半回転）
+      const target = v >= 0 ? 0 : Math.PI;
+      let diff = target - this.yaw;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      this.yaw += diff * Math.min(1, dt * 0.006);
+      this.el.object3D.rotation.y = this.yaw + 0.08 * Math.sin(t * 4 + d.phase);
+
+      // しっぽを振る
+      if (!this.tail) {
+        const el = this.el.querySelector('.tail');
+        if (el) this.tail = el.object3D;
+      }
+      if (this.tail) {
+        this.tail.rotation.y = 0.35 * Math.sin(t * 6 + d.phase) * (0.5 + 0.5 * Math.abs(v));
+      }
+    }
+  });
+
+  /* =========================================================
+     3) 海藻：板を十字に交差させ、アルファ付きの葉テクスチャを貼って
+        頂点をゆらゆら動かす（テクスチャはコードで生成するので画像ファイル不要）
+     ========================================================= */
+  function makeLeafTexture(baseColor) {
+    const W = 128, H = 512;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+
+    const base = new THREE.Color(baseColor);
+    const dark  = '#' + base.clone().multiplyScalar(0.5).getHexString();
+    const light = '#' + base.clone().lerp(new THREE.Color('#d8f5a0'), 0.4).getHexString();
+
+    // 葉の輪郭（上=先端、下=根元）。縁は少し波打たせる
+    const left = [], right = [];
+    for (let y = 0; y <= H; y += 4) {
+      const u = y / H;
+      const half = (W / 2 - 4) * Math.pow(u, 0.55) * (1 - 0.7 * Math.pow(u, 8)) * (1 + 0.07 * Math.sin(u * 38));
+      left.push([W / 2 - half, y]);
+      right.push([W / 2 + half, y]);
+    }
+    ctx.beginPath();
+    left.forEach(function (p, i) { i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); });
+    for (let i = right.length - 1; i >= 0; i--) ctx.lineTo(right[i][0], right[i][1]);
+    ctx.closePath();
+
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, light);
+    grad.addColorStop(1, dark);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // 葉脈と筋
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(220,255,170,0.55)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
+    ctx.strokeStyle = 'rgba(0,40,10,0.18)';
+    ctx.lineWidth = 2;
+    for (let i = -3; i <= 3; i++) {
+      if (i === 0) continue;
+      ctx.beginPath();
+      ctx.moveTo(W / 2 + i * 6, 0);
+      ctx.lineTo(W / 2 + i * 14, H);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    const tex = new THREE.CanvasTexture(c);
+    setSRGB(tex);
+    return tex;
+  }
+
+  AFRAME.registerComponent('seaweed', {
+    schema: {
+      blades: { default: 3 },
+      height: { default: 2 },
+      width:  { default: 0.5 },
+      color:  { default: '#2E8B3E' },
+      amp:    { default: 0.25 },
+      speed:  { default: 1.2 },
+      seed:   { default: 1 }
+    },
+    init: function () {
+      const d = this.data;
+      const r = rng(d.seed);
+      const tex = makeLeafTexture(d.color);
+      const mat = new THREE.MeshStandardMaterial({
+        map: tex, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.8
+      });
+      const group = new THREE.Group();
+      this.parts = [];
+
+      for (let i = 0; i < d.blades; i++) {
+        const h = d.height * (0.7 + 0.5 * r());
+        const w = d.width * (0.8 + 0.5 * r());
+        const baseAngle = r() * Math.PI;
+        const ox = (r() - 0.5) * 0.4;
+        const oz = (r() - 0.5) * 0.4;
+        const phase = r() * 6.28;
+
+        // 上から見て十字になるよう、90度ずらした2枚を重ねる
+        for (let k = 0; k < 2; k++) {
+          const geo = new THREE.PlaneGeometry(w, h, 1, 14);
+          geo.translate(0, h / 2, 0); // 根元を y=0 にそろえる
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.rotation.y = baseAngle + k * Math.PI / 2;
+          mesh.position.set(ox, 0, oz);
+          group.add(mesh);
+          this.parts.push({
+            pos: geo.attributes.position,
+            orig: geo.attributes.position.array.slice(),
+            h: h, phase: phase
+          });
+        }
+      }
+      this.el.setObject3D('mesh', group);
+    },
+    tick: function (time) {
+      const t = time / 1000 * this.data.speed;
+      const amp = this.data.amp;
+      for (let p = 0; p < this.parts.length; p++) {
+        const part = this.parts[p];
+        const arr = part.pos.array;
+        const orig = part.orig;
+        for (let i = 0; i < arr.length; i += 3) {
+          const s = orig[i + 1] / part.h;   // 0(根元)〜1(先端)
+          const bend = s * s;               // 先端ほど大きく曲がる
+          const wave = t + part.phase + s * 3.0;
+          arr[i]     = orig[i]     + Math.sin(wave) * amp * bend;
+          arr[i + 2] = orig[i + 2] + Math.cos(wave * 0.8) * amp * 0.5 * bend;
+        }
+        part.pos.needsUpdate = true;
+      }
+    }
+  });
+
+  /* =========================================================
+     4) 岩：球をノイズでゴツゴツに変形し、頂点カラーで濃淡をつける
+     ========================================================= */
+  AFRAME.registerComponent('rock', {
+    schema: {
+      seed:  { default: 1 },
+      color: { default: '#7d7b74' }
+    },
+    init: function () {
+      const d = this.data;
+      const s = d.seed;
+      const geo = new THREE.IcosahedronGeometry(1, 2);
+      const pos = geo.attributes.position;
+      const base = new THREE.Color(d.color);
+      const colors = new Float32Array(pos.count * 3);
+      const v = new THREE.Vector3();
+      const c = new THREE.Color();
+
+      function noise(x, y, z) {
+        return Math.sin(x * 2.1 + s) * Math.cos(y * 2.3 + s * 1.7) * 0.5 +
+               Math.sin(x * 5.3 + y * 4.1 + z * 3.7 + s * 2.3) * 0.25 +
+               Math.sin(z * 7.9 + s) * Math.sin(x * 6.1) * 0.12;
+      }
+
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i);
+        const n = noise(v.x, v.y, v.z);
+        v.multiplyScalar(1 + 0.22 * n);
+        pos.setXYZ(i, v.x, v.y, v.z);
+
+        // 濃淡：ノイズ＋下ほど暗く
+        const shade = 0.8 + 0.35 * noise(v.x * 1.7, v.y * 1.7, v.z * 1.7) + 0.12 * v.y;
+        c.copy(base).multiplyScalar(Math.max(0.35, shade));
+        colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      geo.computeVertexNormals();
+
+      const mat = new THREE.MeshStandardMaterial({
+        vertexColors: true, flatShading: true, roughness: 0.95
+      });
+      this.el.setObject3D('mesh', new THREE.Mesh(geo, mat));
+    }
+  });
+
+  /* =========================================================
+     5) 砂の床（ノイズ入りテクスチャをコードで生成）
+     ========================================================= */
+  AFRAME.registerComponent('sand', {
+    init: function () {
+      const S = 512;
+      const c = document.createElement('canvas');
+      c.width = S; c.height = S;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#d9c48f';
+      ctx.fillRect(0, 0, S, S);
+      const r = rng(7);
+      const tones = ['#c9b27a', '#e8d6a2', '#bfa56b', '#efe0b4', '#a89260'];
+      for (let i = 0; i < 9000; i++) {
+        ctx.fillStyle = tones[Math.floor(r() * tones.length)];
+        const sz = 1 + r() * 2.5;
+        ctx.fillRect(r() * S, r() * S, sz, sz);
+      }
+      const tex = new THREE.CanvasTexture(c);
+      setSRGB(tex);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(14, 14);
+
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(60, 60),
+        new THREE.MeshStandardMaterial({ map: tex, roughness: 1 })
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      this.el.setObject3D('mesh', mesh);
+    }
+  });
+  </script>
 </head>
+
 <body>
-  <a-scene background="color: #7FD1E8">
+  <a-scene background="color: #2A86A3" fog="type: linear; color: #2A86A3; near: 3; far: 22">
 
     <!-- 光 -->
-    <a-entity light="type: ambient; color: #FFFFFF; intensity: 0.8"></a-entity>
-    <a-entity light="type: directional; color: #FFFFFF; intensity: 0.6" position="2 6 2"></a-entity>
+    <a-entity light="type: ambient; color: #BFE8F5; intensity: 0.7"></a-entity>
+    <a-entity light="type: directional; color: #FFFFFF; intensity: 0.9" position="2 8 3"></a-entity>
 
-    <!-- 水底 -->
-    <a-plane position="0 0 -4" rotation="-90 0 0" width="30" height="30" color="#E8D9A8"></a-plane>
+    <!-- 砂の床 -->
+    <a-entity sand position="0 0 0"></a-entity>
 
-    <!-- 水中の空 -->
-    <a-sky color="#7FD1E8"></a-sky>
-
-    <!-- 岩 -->
-    <a-sphere position="-3 0.4 -6" radius="0.9" color="#8A8A8A"></a-sphere>
-    <a-sphere position="3.5 0.3 -7" radius="0.7" color="#777777"></a-sphere>
-
-    <!-- 水草 -->
-    <a-cylinder position="2 1 -5" radius="0.08" height="2" color="#3FA34D"></a-cylinder>
-    <a-cylinder position="2.3 0.75 -5.2" radius="0.08" height="1.5" color="#2E8B3E"></a-cylinder>
-    <a-cylinder position="-2 0.9 -4.5" radius="0.08" height="1.8" color="#3FA34D"></a-cylinder>
-
-    <!-- ウーパールーパーが円を描いて歩く(外側が回転、中身は前回のコード) -->
-    <a-entity position="0 0 -4"
-      animation="property: rotation; to: 0 360 0; dur: 30000; easing: linear; loop: true">
-
-      <!-- 回転の中心から離して配置 -->
-      <a-entity position="2.5 0 0">
-
-        <!-- ここから前回のウーパールーパー -->
-        <a-entity scale="0.5 0.5 0.5" rotation="0 0 0">
-          <a-entity position="1.05 0 0">
-
-            <!-- 胴体 -->
-            <a-entity position="-0.2 0.65 0" scale="1.35 0.35 0.65">
-              <a-sphere radius="1" color="#FF9EBA"></a-sphere>
-            </a-entity>
-
-            <!-- 頭 -->
-            <a-entity position="1.0 0.95 0" scale="0.8 0.55 0.7">
-              <a-sphere radius="1" color="#FFB3C7"></a-sphere>
-            </a-entity>
-
-            <!-- 目 -->
-            <a-sphere position="1.35 1.15 0.5" radius="0.1" color="#0D0A12"></a-sphere>
-            <a-sphere position="1.35 1.15 -0.5" radius="0.1" color="#0D0A12"></a-sphere>
-
-            <!-- 口 -->
-            <a-box position="1.75 0.9 0" width="0.085" height="0.025" depth="0.4" color="#BF4066"></a-box>
-
-            <!-- 外鰓(手前側) -->
-            <a-cone position="0.95 1.30 0.8" rotation="63 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
-            <a-cone position="0.95 0.95 0.85" rotation="90 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
-            <a-cone position="0.95 0.65 0.78" rotation="109 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
-
-            <!-- 外鰓(反対側) -->
-            <a-cone position="0.95 1.30 -0.8" rotation="-63 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
-            <a-cone position="0.95 0.95 -0.85" rotation="-90 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
-            <a-cone position="0.95 0.65 -0.78" rotation="-109 0 0" radius-bottom="0.13" height="0.55" color="#FF5987"></a-cone>
-
-            <!-- 足 -->
-            <a-cylinder position="0.65 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#FFA6C0"></a-cylinder>
-            <a-cylinder position="0.65 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#FFA6C0"></a-cylinder>
-            <a-cylinder position="-0.85 0.3 0.55" rotation="-34 0 0" radius="0.12" height="0.5" color="#FFA6C0"></a-cylinder>
-            <a-cylinder position="-0.85 0.3 -0.55" rotation="34 0 0" radius="0.12" height="0.5" color="#FFA6C0"></a-cylinder>
-
-            <!-- しっぽ -->
-            <a-entity position="-1.4 0.8 0" scale="2.5 0.3 0.2">
-              <a-sphere radius="1" color="#FF9EBA"></a-sphere>
-            </a-entity>
-
-          </a-entity>
-        </a-entity>
-        <!-- ここまで -->
-
-      </a-entity>
+    <!-- ウーパールーパー 3匹（色だけ違う） -->
+    <!-- ① リューシスティック：体 白 / 目 黒 / 鰓 ピンク -->
+    <a-entity swim="cx: 0; amp: 2.6; speed: 0.5; z: -3.3; y: 0.45; phase: 0">
+      <a-entity scale="0.25 0.25 0.25"
+        axolotl="body: #FFFFFF; head: #FFFFFF; limb: #FFFFFF; eye: #000000; gill: #FF8FB1; mouth: #E58AA0"></a-entity>
     </a-entity>
 
-    <!-- 視点(目の高さ) -->
-    <a-entity camera position="0 1.6 0" look-controls></a-entity>
+    <!-- ② ゴールデン：体 黄色 / 目 白 / 鰓 オレンジがかったピンク -->
+    <a-entity swim="cx: 0; amp: 3.0; speed: 0.38; z: -4.4; y: 0.7; phase: 2">
+      <a-entity scale="0.25 0.25 0.25"
+        axolotl="body: #FFD54A; head: #FFE066; limb: #FFCF40; eye: #FFFFFF; gill: #FF9F7A; mouth: #E0A030"></a-entity>
+    </a-entity>
+
+    <!-- ③ ブラック：体 グレー / 目 青みがかった黒 / 鰓 グレー -->
+    <a-entity swim="cx: 0; amp: 3.4; speed: 0.45; z: -5.5; y: 0.35; phase: 4">
+      <a-entity scale="0.25 0.25 0.25"
+        axolotl="body: #4A4A50; head: #55555B; limb: #4A4A50; eye: #101A3A; gill: #3A3A40; mouth: #2A2A2E"></a-entity>
+    </a-entity>
+
+    <!-- 岩（ウーパールーパーの通り道の外側と、後ろ側に配置） -->
+    <a-entity rock="seed: 1" position="-5 0.3 -8"   scale="1.6 1.0 1.3"></a-entity>
+    <a-entity rock="seed: 2" position="4.5 0.25 -9"  scale="1.4 0.8 1.2" rotation="0 40 0"></a-entity>
+    <a-entity rock="seed: 3" position="0 0.4 -10"    scale="2.2 1.3 1.6" rotation="0 80 0"></a-entity>
+    <a-entity rock="seed: 4" position="-6 0.2 -3"    scale="1.0 0.6 0.9"></a-entity>
+    <a-entity rock="seed: 5" position="6 0.25 -4"    scale="1.2 0.7 1.0" rotation="0 120 0"></a-entity>
+    <a-entity rock="seed: 6" position="-3 0.25 3.5"  scale="1.2 0.7 1.0" rotation="0 200 0"></a-entity>
+    <a-entity rock="seed: 7" position="4 0.3 4"      scale="1.5 0.9 1.2" rotation="0 300 0"></a-entity>
+    <a-entity rock="seed: 8" position="-1.5 0.15 -2" scale="0.5 0.3 0.45" rotation="0 60 0" ></a-entity>
+
+    <!-- 海藻（高さ・太さ・色・ゆれ方を少しずつ変える） -->
+    <a-entity seaweed="seed: 11; blades: 3; height: 2.6; width: 0.6; color: #2E8B3E; amp: 0.30" position="-4 0 -7"></a-entity>
+    <a-entity seaweed="seed: 12; blades: 4; height: 3.2; width: 0.55; color: #3FA34D; amp: 0.35" position="-2.2 0 -8.5"></a-entity>
+    <a-entity seaweed="seed: 13; blades: 3; height: 2.2; width: 0.6; color: #4FB35A; amp: 0.28" position="2.5 0 -8"></a-entity>
+    <a-entity seaweed="seed: 14; blades: 4; height: 3.0; width: 0.5; color: #2A7F3A; amp: 0.33" position="5 0 -7"></a-entity>
+    <a-entity seaweed="seed: 15; blades: 3; height: 1.8; width: 0.5; color: #5BBF62; amp: 0.25" position="-5.5 0 -4.5"></a-entity>
+    <a-entity seaweed="seed: 16; blades: 3; height: 2.4; width: 0.55; color: #36963F; amp: 0.30" position="5.5 0 -2.5"></a-entity>
+    <a-entity seaweed="seed: 17; blades: 4; height: 2.8; width: 0.6; color: #2E8B3E; amp: 0.32" position="-6.5 0 0"></a-entity>
+    <a-entity seaweed="seed: 18; blades: 3; height: 2.0; width: 0.5; color: #4FB35A; amp: 0.26" position="6.5 0 1"></a-entity>
+    <a-entity seaweed="seed: 19; blades: 4; height: 3.0; width: 0.6; color: #3FA34D; amp: 0.34" position="-2 0 5"></a-entity>
+    <a-entity seaweed="seed: 20; blades: 3; height: 2.3; width: 0.55; color: #2A7F3A; amp: 0.28" position="2 0 6"></a-entity>
+    <a-entity seaweed="seed: 21; blades: 3; height: 2.0; width: 0.5; color: #5BBF62; amp: 0.27" position="0 0 -11.5"></a-entity>
+    <a-entity seaweed="seed: 22; blades: 3; height: 1.6; width: 0.5; color: #36963F; amp: 0.24" position="-3.5 0 -2.2"></a-entity>
+
+    <!-- 視点（目の高さ）。PCではWASDで移動、スマホはジャイロで見回せる -->
+    <a-entity camera look-controls wasd-controls position="0 1.2 0"></a-entity>
   </a-scene>
 </body>
 </html>
